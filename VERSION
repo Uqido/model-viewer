@@ -1,0 +1,5 @@
+commit 9e295c446ab40cf135aa537bf47ba59ce76b990f
+Author: Chris Joel <cdata@google.com>
+Date:   Fri Apr 3 10:47:58 2020 -0700
+
+    Tweak .gitignore path
