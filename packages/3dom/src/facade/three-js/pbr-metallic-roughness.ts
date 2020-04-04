@@ -52,9 +52,19 @@ export class PBRMetallicRoughness extends ThreeDOMElement implements
     this[$threeMaterial].opacity = value[3];
   }
 
+  get visible(): boolean {
+    return this[$threeMaterial].visible;
+  }
+
+  set visible(value: boolean) {
+    this[$threeMaterial].visible = value;
+  }
+
+
   toJSON(): SerializedPBRMetallicRoughness {
     const serialized: Partial<SerializedPBRMetallicRoughness> = super.toJSON();
     serialized.baseColorFactor = this.baseColorFactor;
+    serialized.visible = this.visible;
     return serialized as SerializedPBRMetallicRoughness;
   }
 }

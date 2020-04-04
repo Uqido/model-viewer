@@ -30,6 +30,7 @@ export interface ThreeDOMElement {
  * @see https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#pbrmetallicroughness
  */
 export interface PBRMetallicRoughness extends ThreeDOMElement {
+  visible: boolean;
   baseColorFactor: RGBA;
   toJSON(): SerializedPBRMetallicRoughness;
 }

@@ -33,6 +33,7 @@ export type MaterialConstructor = Constructor<MaterialInterface>&
 export function defineMaterial(ThreeDOMElement: Constructor<ThreeDOMElement>):
     MaterialConstructor {
   const $pbrMetallicRoughness = Symbol('pbrMetallicRoughness');
+  const $visible = Symbol('visible');
   const $kernel = Symbol('kernel');
   const $name = Symbol('name');
 
@@ -43,6 +44,7 @@ export function defineMaterial(ThreeDOMElement: Constructor<ThreeDOMElement>):
    */
   class Material extends ThreeDOMElement implements MaterialInterface {
     protected[$pbrMetallicRoughness]: PBRMetallicRoughness;
+    protected[$visible]: boolean;
     protected[$kernel]: ModelKernel;
     protected[$name]: string;
 

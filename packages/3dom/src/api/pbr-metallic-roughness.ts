@@ -38,6 +38,7 @@ export function definePBRMetallicRoughness(
     PBRMetallicRoughnessConstructor {
   const $kernel = Symbol('kernel');
   const $baseColorFactor = Symbol('baseColorFactor');
+  const $visible = Symbol('visible');
 
   /**
    * PBRMetallicRoughness exposes the PBR properties for a given Material.
@@ -46,15 +47,27 @@ export function definePBRMetallicRoughness(
       PBRMetallicRoughnessInterface {
     protected[$kernel]: ModelKernel;
     protected[$baseColorFactor]: Readonly<RGBA>;
+    protected[$visible]: boolean;
 
     constructor(
         kernel: ModelKernel, serialized: SerializedPBRMetallicRoughness) {
       super(kernel, serialized);
-
       this[$kernel] = kernel;
+      this[$visible] = serialized.visible;
       this[$baseColorFactor] =
           Object.freeze(serialized.baseColorFactor) as RGBA;
     }
+
+
+    get visible() {
+      return this[$visible];
+    }
+
+    async setVisible(value: boolean) {
+      await this[$kernel].mutate(this, 'visible', value);
+      this[$visible] = value;
+    }
+
 
     /**
      * The base color factor of the material in RGBA format.
