@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import {AnimationAction, AnimationClip, AnimationMixer, Box3, Object3D, Vector3} from 'three';
+import {AnimationAction, AnimationClip, AnimationMixer, Box3, LoopOnce, Object3D, Vector3} from 'three';
 
 import {CachingGLTFLoader} from './CachingGLTFLoader.js';
 import {ModelViewerGLTFInstance} from './gltf-instance/ModelViewerGLTFInstance.js';
@@ -53,6 +53,13 @@ export default class Model extends Object3D {
 
   get loader() {
     return this[$loader];
+  }
+
+  /**
+   * Needed for finished event
+   */
+  get animationMixer() {
+    return this.mixer;
   }
 
   /**
@@ -178,7 +185,9 @@ export default class Model extends Object3D {
    * provided, or if no animation is found by the given name, always falls back
    * to playing the first animation.
    */
-  playAnimation(name: string|null = null, crossfadeTime: number = 0) {
+  playAnimation(
+      name: string|null = null, crossfadeTime: number = 0,
+      loop: Boolean = true) {
     const {animations} = this;
     if (animations == null || animations.length === 0) {
       console.warn(
@@ -196,12 +205,22 @@ export default class Model extends Object3D {
       animationClip = animations[0];
     }
 
+    if (this.currentAnimationAction?.paused) {
+      // non faccio crossfade se sono in pausa, posso stoppare l'animazione
+      this.stopAnimation();
+    }
+
     try {
       const {currentAnimationAction: lastAnimationAction} = this;
 
       this.currentAnimationAction =
           this.mixer.clipAction(animationClip, this).play();
       this.currentAnimationAction.enabled = true;
+
+      if (!loop) {
+        this.currentAnimationAction.setLoop(LoopOnce, 0);
+        this.currentAnimationAction.clampWhenFinished = true;
+      }
 
       if (lastAnimationAction != null &&
           this.currentAnimationAction !== lastAnimationAction) {

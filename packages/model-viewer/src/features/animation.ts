@@ -25,6 +25,7 @@ const $paused = Symbol('paused');
 
 export declare interface AnimationInterface {
   autoplay: boolean;
+  noloop: Boolean
   animationName: string|void;
   animationCrossfadeDuration: number;
   readonly availableAnimations: Array<string>;
@@ -38,6 +39,7 @@ export const AnimationMixin = <T extends Constructor<ModelViewerElementBase>>(
     ModelViewerElement: T): Constructor<AnimationInterface>&T => {
   class AnimationModelViewerElement extends ModelViewerElement {
     @property({type: Boolean}) autoplay: boolean = false;
+    @property({type: Boolean}) noloop: boolean = false;
     @property({type: String, attribute: 'animation-name'})
     animationName: string|undefined = undefined;
     @property({type: Number, attribute: 'animation-crossfade-duration'})
@@ -98,6 +100,9 @@ export const AnimationMixin = <T extends Constructor<ModelViewerElementBase>>(
         this[$changeAnimation]();
         this.play();
       }
+
+      this[$scene].model.animationMixer.addEventListener(
+          'finished', () => {this.pause()})
     }
 
     [$tick](_time: number, delta: number) {
@@ -140,7 +145,8 @@ export const AnimationMixin = <T extends Constructor<ModelViewerElementBase>>(
 
       model.playAnimation(
           this.animationName,
-          this.animationCrossfadeDuration / MILLISECONDS_PER_SECOND);
+          this.animationCrossfadeDuration / MILLISECONDS_PER_SECOND,
+          !this.noloop);
 
       // If we are currently paused, we need to force a render so that
       // the model updates to the first frame of the new animation
