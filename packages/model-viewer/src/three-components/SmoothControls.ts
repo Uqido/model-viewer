@@ -15,7 +15,7 @@
 import {Euler, Event as ThreeEvent, EventDispatcher, PerspectiveCamera, Spherical} from 'three';
 
 import {clamp} from '../utilities.js';
-import {Damper} from './Damper.js';
+import {Damper, SETTLING_TIME} from './Damper.js';
 
 export type EventHandlingBehavior = 'prevent-all'|'prevent-handled';
 export type InteractionPolicy = 'always-allow'|'allow-when-focused';
@@ -417,10 +417,10 @@ export class SmoothControls extends EventDispatcher {
                 (this[$goalLogFov] - Math.log(minimumFieldOfView!));
 
     const goalRadius = radius +
-    deltaZoom *
-        Math.min(
-            isFinite(deltaRatio) ? deltaRatio : Infinity,
-            maximumRadius! - minimumRadius!);
+        deltaZoom *
+            Math.min(
+                isFinite(deltaRatio) ? deltaRatio : Infinity,
+                maximumRadius! - minimumRadius!);
     let handled = this.setOrbit(goalTheta, goalPhi, goalRadius);
 
     if (deltaZoom !== 0) {
@@ -437,7 +437,7 @@ export class SmoothControls extends EventDispatcher {
    * parameters.
    */
   jumpToGoal() {
-    this.update(0, 10000);
+    this.update(0, SETTLING_TIME);
   }
 
   /**
@@ -451,8 +451,7 @@ export class SmoothControls extends EventDispatcher {
     if (this[$isStationary]()) {
       return;
     }
-    const {maximumPolarAngle, maximumRadius, maximumFieldOfView} =
-        this[$options];
+    const {maximumPolarAngle, maximumRadius} = this[$options];
 
     const dTheta = this[$spherical].theta - this[$goalSpherical].theta;
     if (Math.abs(dTheta) > Math.PI &&
@@ -476,8 +475,8 @@ export class SmoothControls extends EventDispatcher {
         delta,
         maximumRadius!);
 
-    this[$logFov] = this[$fovDamper].update(
-        this[$logFov], this[$goalLogFov], delta, maximumFieldOfView!);
+    this[$logFov] =
+        this[$fovDamper].update(this[$logFov], this[$goalLogFov], delta, 1);
 
     this[$moveCamera]();
   }

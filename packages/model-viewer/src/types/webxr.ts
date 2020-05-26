@@ -31,8 +31,17 @@ declare interface XRHitTestSource {
   cancel(): void;
 }
 
+declare interface XRTransientInputHitTestSource {
+  cancel(): void;
+}
+
 declare interface XRHitTestResult {
   getPose(baseSpace: XRSpace): XRPose|null;
+}
+
+declare interface XRTransientInputHitTestResult {
+  readonly inputSource: XRInputSource;
+  readonly results: Array<XRHitTestResult>;
 }
 
 declare interface XR extends EventTarget {
@@ -67,12 +76,19 @@ declare interface XRViewerPose {
   readonly views: Array<XRView>
 }
 
+declare interface XRRayDirectionInit {
+  x?: number;
+  y?: number;
+  z?: number;
+  w?: number;
+}
+
 declare class XRRay {
   readonly origin: DOMPointReadOnly;
-  readonly direction: DOMPointReadOnly;
+  readonly direction: XRRayDirectionInit;
   matrix: Float32Array;
 
-  constructor(origin: DOMPointInit, direction: DOMPointInit)
+  constructor(origin: DOMPointInit, direction: XRRayDirectionInit)
 }
 
 declare interface XRPose {
@@ -89,6 +105,12 @@ declare interface XRInputSource {
   readonly targetRaySpace: XRSpace;
   readonly gripSpace?: XRSpace;
   readonly profiles: Array<String>;
+  readonly gamepad: Gamepad;
+}
+
+declare interface XRInputSourceEvent extends Event {
+  readonly frame: XRFrame;
+  readonly inputSource: XRInputSource;
 }
 
 declare interface XRFrame {
@@ -96,6 +118,9 @@ declare interface XRFrame {
   getViewerPose(referenceSpace?: XRReferenceSpace): XRViewerPose;
   getPose(space: XRSpace, referenceSpace: XRReferenceSpace): XRPose;
   getHitTestResults(hitTestSource: XRHitTestSource): Array<XRHitTestResult>;
+  getHitTestResultsForTransientInput(hitTestSource:
+                                         XRTransientInputHitTestSource):
+      Array<XRTransientInputHitTestResult>;
 }
 
 type XRFrameRequestCallback = (time: number, frame: XRFrame) => void;
@@ -116,7 +141,12 @@ declare interface XRRenderStateInit {
 
 declare interface XRHitTestOptionsInit {
   space: XRSpace;
-  ray?: XRRay;
+  offsetRay?: XRRay;
+}
+
+declare interface XRTransientInputHitTestOptionsInit {
+  profile: string;
+  offsetRay?: XRRay;
 }
 
 declare interface XRSession extends EventTarget {
@@ -124,6 +154,9 @@ declare interface XRSession extends EventTarget {
   updateRenderState(state?: XRRenderStateInit): any;
   requestReferenceSpace(type: XRReferenceSpaceType): Promise<XRReferenceSpace>;
   requestHitTestSource(options: XRHitTestOptionsInit): Promise<XRHitTestSource>;
+  requestHitTestSourceForTransientInput(options:
+                                            XRTransientInputHitTestOptionsInit):
+      Promise<XRTransientInputHitTestSource>;
   inputSources: Array<XRInputSource>;
   requestAnimationFrame(callback: XRFrameRequestCallback): number;
   cancelAnimationFrame(id: number): void;
@@ -139,14 +172,22 @@ declare interface XRViewport {
 
 declare interface XRLayer {}
 
+declare interface XRWebGLLayerInit {
+  antialias?: boolean;
+  depth?: boolean;
+  stencil?: boolean;
+  alpha?: boolean;
+  ignoreDepthValues?: boolean;
+  framebufferScaleFactor?: number;
+}
+
 declare class XRWebGLLayer implements XRLayer {
   public framebuffer: WebGLFramebuffer;
   public framebufferWidth: number;
   public framebufferHeight: number;
 
   constructor(
-      session: XRSession, gl: WebGLRenderingContext,
-      options: WebGLContextAttributes)
+      session: XRSession, gl: WebGLRenderingContext, options: XRWebGLLayerInit)
 
   getViewport(view: XRView): XRViewport
 }

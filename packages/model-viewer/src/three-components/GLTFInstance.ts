@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import {Mesh, Object3D, Scene} from 'three';
+import {Group, Mesh, Object3D} from 'three';
 import {GLTF} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {SkeletonUtils} from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {Constructor} from '../utilities.js';
@@ -117,7 +117,6 @@ export class GLTFInstance implements GLTF {
    */
   clone<T extends GLTFInstance>(): T {
     const GLTFInstanceConstructor = this.constructor as Constructor<T>;
-
     const clonedGLTF = this[$clone]();
 
     return new GLTFInstanceConstructor(clonedGLTF);
@@ -128,7 +127,7 @@ export class GLTFInstance implements GLTF {
    * this instance is done being used.
    */
   dispose(): void {
-    this.scenes.forEach((scene: Scene) => {
+    this.scenes.forEach((scene: Group) => {
       scene.traverse((object: Object3D) => {
         if (!(object as Mesh).isMesh) {
           return;
@@ -151,7 +150,7 @@ export class GLTFInstance implements GLTF {
     const source = this[$preparedGLTF];
     // TODO(#195,#1003): We don't currently support multiple scenes, so we don't
     // bother cloning extra scenes for now:
-    const scene = SkeletonUtils.clone(this.scene) as Scene;
+    const scene = SkeletonUtils.clone(this.scene) as Group;
     const scenes = [scene];
     const userData = source.userData ? {...source.userData} : {};
     return {...source, scene, scenes, userData};

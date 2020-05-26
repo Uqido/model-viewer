@@ -68,6 +68,8 @@ export const AnimationMixin = <T extends Constructor<ModelViewerElementBase>>(
 
     set currentTime(value: number) {
       this[$scene].model.animationTime = value;
+      this[$renderer].threeRenderer.shadowMap.needsUpdate = true;
+      this[$needsRender]();
     }
 
     pause() {

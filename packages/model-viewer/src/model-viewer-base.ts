@@ -22,7 +22,7 @@ import {makeTemplate} from './template.js';
 import {$evictionPolicy, CachingGLTFLoader} from './three-components/CachingGLTFLoader.js';
 import {ModelScene} from './three-components/ModelScene.js';
 import {ContextLostEvent, Renderer} from './three-components/Renderer.js';
-import {debounce, deserializeUrl, resolveDpr} from './utilities.js';
+import {debounce, deserializeUrl} from './utilities.js';
 import {dataUrlToBlob} from './utilities/data-conversion.js';
 import {ProgressTracker} from './utilities/progress-tracker.js';
 
@@ -35,19 +35,17 @@ const UNSIZED_MEDIA_HEIGHT = 150;
 const blobCanvas = document.createElement('canvas');
 let blobContext: CanvasRenderingContext2D|null = null;
 
-const $selectCanvas = Symbol('selectCanvas');
-const $updateSize = Symbol('updateSize');
 const $loaded = Symbol('loaded');
 const $template = Symbol('template');
 const $fallbackResizeHandler = Symbol('fallbackResizeHandler');
 const $defaultAriaLabel = Symbol('defaultAriaLabel');
 const $resizeObserver = Symbol('resizeObserver');
 const $intersectionObserver = Symbol('intersectionObserver');
-const $lastDpr = Symbol('lastDpr');
 const $clearModelTimeout = Symbol('clearModelTimeout');
 const $onContextLost = Symbol('onContextLost');
 const $contextLostHandler = Symbol('contextLostHandler');
 
+export const $updateSize = Symbol('updateSize');
 export const $isElementInViewport = Symbol('isElementInViewport');
 export const $announceModelVisibility = Symbol('announceModelVisibility');
 export const $ariaLabel = Symbol('ariaLabel');
@@ -132,7 +130,6 @@ export default class ModelViewerElementBase extends UpdatingElement {
   protected[$userInputElement]: HTMLDivElement;
   protected[$canvas]: HTMLCanvasElement;
   protected[$defaultAriaLabel]: string;
-  protected[$lastDpr]: number = resolveDpr();
   protected[$clearModelTimeout]: number|null = null;
 
   protected[$fallbackResizeHandler] = debounce(() => {
@@ -228,7 +225,7 @@ export default class ModelViewerElementBase extends UpdatingElement {
     // Update initial size on microtask timing so that subclasses have a
     // chance to initialize
     Promise.resolve().then(() => {
-      this[$updateSize](this.getBoundingClientRect(), true);
+      this[$updateSize](this.getBoundingClientRect());
     });
 
     if (HAS_RESIZE_OBSERVER) {
@@ -298,13 +295,12 @@ export default class ModelViewerElementBase extends UpdatingElement {
       this[$intersectionObserver]!.observe(this);
     }
 
-    this[$renderer].addEventListener(
+    const renderer = this[$renderer];
+    renderer.addEventListener(
         'contextlost',
         this[$contextLostHandler] as (event: ThreeEvent) => void);
 
-    this[$renderer].registerScene(this[$scene]);
-    this[$selectCanvas]();
-    this[$scene].isDirty = true;
+    renderer.registerScene(this[$scene]);
 
     if (this[$clearModelTimeout] != null) {
       self.clearTimeout(this[$clearModelTimeout]!);
@@ -327,12 +323,12 @@ export default class ModelViewerElementBase extends UpdatingElement {
       this[$intersectionObserver]!.unobserve(this);
     }
 
-    this[$renderer].removeEventListener(
+    const renderer = this[$renderer];
+    renderer.removeEventListener(
         'contextlost',
         this[$contextLostHandler] as (event: ThreeEvent) => void);
 
-    this[$renderer].unregisterScene(this[$scene]);
-    this[$selectCanvas]();
+    renderer.unregisterScene(this[$scene]);
 
     this[$clearModelTimeout] = self.setTimeout(() => {
       this[$scene].model.clear();
@@ -371,7 +367,7 @@ export default class ModelViewerElementBase extends UpdatingElement {
     const idealAspect = options ? options.idealAspect : undefined;
 
     const {width, height, model, aspect} = this[$scene];
-    const dpr = resolveDpr();
+    const {dpr} = this[$renderer];
     let outputWidth = width * dpr;
     let outputHeight = height * dpr;
     let offsetX = 0;
@@ -449,21 +445,6 @@ export default class ModelViewerElementBase extends UpdatingElement {
     return this[$isElementInViewport];
   }
 
-  /**
-   * The function enables an optimization, where when there is only a single
-   * <model-viewer> element, we can use the renderer's 3D canvas directly for
-   * display. Otherwise we need to use the element's 2D canvas and copy the
-   * renderer's result into it.
-   */
-  [$selectCanvas]() {
-    if (this[$renderer].hasOnlyOneScene) {
-      this[$userInputElement].appendChild(this[$renderer].canvasElement);
-      this[$canvas].classList.remove('show');
-    } else {
-      this[$renderer].canvasElement.classList.remove('show');
-    }
-  }
-
   get[$displayCanvas]() {
     return this[$renderer].hasOnlyOneScene ? this[$renderer].canvasElement :
                                              this[$canvas];
@@ -472,33 +453,14 @@ export default class ModelViewerElementBase extends UpdatingElement {
   /**
    * Called on initialization and when the resize observer fires.
    */
-  [$updateSize](
-      {width, height}: {width: any, height: any}, forceApply = false) {
-    const {width: prevWidth, height: prevHeight} = this[$scene].getSize();
-    // Round off the pixel size
-    const intWidth = parseInt(width, 10);
-    const intHeight = parseInt(height, 10);
-
+  [$updateSize]({width, height}: {width: any, height: any}) {
     this[$container].style.width = `${width}px`;
     this[$container].style.height = `${height}px`;
 
-    if (forceApply || (prevWidth !== intWidth || prevHeight !== intHeight)) {
-      this[$onResize]({width: intWidth, height: intHeight});
-    }
+    this[$onResize]({width: parseFloat(width), height: parseFloat(height)});
   }
 
   [$tick](_time: number, _delta: number) {
-    const dpr = resolveDpr();
-    // There is no standard way to detect when DPR changes on account of zoom.
-    // Here we keep a local copy of DPR updated, and when it changes we invoke
-    // the fallback resize handler. It might be better to invoke the resize
-    // handler directly in this case, but the fallback is debounced which will
-    // save us from doing too much work when DPR and window size changes at the
-    // same time.
-    if (dpr !== this[$lastDpr]) {
-      this[$lastDpr] = dpr;
-      this[$fallbackResizeHandler]();
-    }
   }
 
   [$markLoaded]() {
@@ -522,7 +484,6 @@ export default class ModelViewerElementBase extends UpdatingElement {
 
   [$onResize](e: {width: number, height: number}) {
     this[$scene].setSize(e.width, e.height);
-    this[$needsRender]();
   }
 
   [$onContextLost](event: ContextLostEvent) {

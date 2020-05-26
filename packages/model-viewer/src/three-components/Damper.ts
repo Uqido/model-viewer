@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+export const SETTLING_TIME = 10000;  // plenty long enough
 const DECAY_MILLISECONDS = 50;
 const NATURAL_FREQUENCY = 1 / DECAY_MILLISECONDS;
 const NIL_SPEED = 0.0002 * NATURAL_FREQUENCY;
@@ -34,7 +35,7 @@ export class Damper {
   update(
       x: number, xGoal: number, timeStepMilliseconds: number,
       xNormalization: number): number {
-    if (x == null) {
+    if (x == null || xNormalization === 0) {
       return xGoal;
     }
     if (x === xGoal && this[$velocity] === 0) {
@@ -54,7 +55,7 @@ export class Damper {
         (intermediateVelocity - NATURAL_FREQUENCY * intermediateX) * decay;
     const acceleration =
         -NATURAL_FREQUENCY * (newVelocity + intermediateVelocity * decay);
-    if (Math.abs(newVelocity) < NIL_SPEED * xNormalization &&
+    if (Math.abs(newVelocity) < NIL_SPEED * Math.abs(xNormalization) &&
         acceleration * deltaX >= 0) {
       // This ensures the controls settle and stop calling this function instead
       // of asymptotically approaching their goal.

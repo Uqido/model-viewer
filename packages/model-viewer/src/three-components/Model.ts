@@ -18,7 +18,7 @@ import {AnimationAction, AnimationClip, AnimationMixer, Box3, LoopOnce, Object3D
 import {CachingGLTFLoader} from './CachingGLTFLoader.js';
 import {ModelViewerGLTFInstance} from './gltf-instance/ModelViewerGLTFInstance.js';
 import {Hotspot} from './Hotspot.js';
-import {moveChildren, reduceVertices} from './ModelUtils.js';
+import {reduceVertices} from './ModelUtils.js';
 import {Shadow} from './Shadow.js';
 
 export const DEFAULT_FOV_DEG = 45;
@@ -60,6 +60,10 @@ export default class Model extends Object3D {
 
   get loader() {
     return this[$loader];
+  }
+
+  get currentGLTF() {
+    return this[$currentGLTF];
   }
 
   /**
@@ -145,7 +149,7 @@ export default class Model extends Object3D {
     this[$currentGLTF] = gltf;
 
     if (gltf != null) {
-      moveChildren(gltf.scene, this.modelContainer);
+      this.modelContainer.add(gltf.scene);
     }
 
     const {animations} = gltf!;
@@ -169,9 +173,7 @@ export default class Model extends Object3D {
   }
 
   set animationTime(value: number) {
-    if (this.currentAnimationAction != null) {
-      this.currentAnimationAction.time = value;
-    }
+    this.mixer.setTime(value);
   }
 
   get animationTime(): number {
@@ -259,7 +261,9 @@ export default class Model extends Object3D {
     const gltf = this[$currentGLTF];
     // Remove all current children
     if (gltf != null) {
-      moveChildren(this.modelContainer, gltf.scene);
+      for (const child of this.modelContainer.children) {
+        this.modelContainer.remove(child);
+      }
       gltf.dispose();
       this[$currentGLTF] = null;
     }
@@ -337,6 +341,10 @@ export default class Model extends Object3D {
     }
   }
 
+  /**
+   * The shadow must be rotated manually to match any global rotation applied to
+   * this model. The input is the global orientation about the Y axis.
+   */
   setShadowRotation(radiansY: number) {
     const shadow = this[$shadow];
     if (shadow != null) {
@@ -356,6 +364,17 @@ export default class Model extends Object3D {
       const {needsUpdate} = shadow;
       shadow.needsUpdate = false;
       return needsUpdate;
+    }
+  }
+
+  /**
+   * Shift the floor vertically from the bottom of the model's bounding box by
+   * offset (should generally be negative).
+   */
+  setShadowScaleAndOffset(scale: number, offset: number) {
+    const shadow = this[$shadow];
+    if (shadow != null) {
+      shadow.setScaleAndOffset(scale, offset);
     }
   }
 

@@ -21,7 +21,6 @@ import ModelViewerElementBase, {$ariaLabel, $container, $loadedTime, $needsRende
 import {degreesToRadians, normalizeUnit} from '../styles/conversions.js';
 import {EvaluatedStyle, Intrinsics, SphericalIntrinsics, StyleEvaluator, Vector3Intrinsics} from '../styles/evaluators.js';
 import {IdentNode, NumberNode, numberNode, parseExpressions} from '../styles/parsers.js';
-import {Damper} from '../three-components/Damper.js';
 import {SAFE_RADIUS_RATIO} from '../three-components/Model.js';
 import {ChangeEvent, ChangeSource, PointerChangeEvent, SmoothControls} from '../three-components/SmoothControls.js';
 import {Constructor} from '../utilities.js';
@@ -206,9 +205,8 @@ const $onFocus = Symbol('onFocus');
 const $onChange = Symbol('onChange');
 const $onPointerChange = Symbol('onPointerChange');
 
-const $shouldPromptUserToInteract = Symbol('shouldPromptUserToInteract');
 const $waitingToPromptUser = Symbol('waitingToPromptUser');
-const $userPromptedOnce = Symbol('userPromptedOnce');
+const $userHasInteracted = Symbol('userHasInteracted');
 const $promptElementVisibleTime = Symbol('promptElementVisibleTime');
 const $lastPromptOffset = Symbol('lastPromptOffset');
 const $focusedTime = Symbol('focusedTime');
@@ -216,11 +214,6 @@ const $focusedTime = Symbol('focusedTime');
 const $zoomAdjustedFieldOfView = Symbol('zoomAdjustedFieldOfView');
 const $lastSpherical = Symbol('lastSpherical');
 const $jumpCamera = Symbol('jumpCamera');
-const $target = Symbol('target');
-const $goalTarget = Symbol('goalTarget');
-const $targetDamperX = Symbol('targetDamperX');
-const $targetDamperY = Symbol('targetDamperY');
-const $targetDamperZ = Symbol('targetDamperZ');
 
 const $syncCameraOrbit = Symbol('syncCameraOrbit');
 const $syncFieldOfView = Symbol('syncFieldOfView');
@@ -338,21 +331,15 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
     protected[$focusedTime] = Infinity;
     protected[$lastPromptOffset] = 0;
     protected[$promptElementVisibleTime] = Infinity;
-    protected[$userPromptedOnce] = false;
+    protected[$userHasInteracted] = false;
     protected[$waitingToPromptUser] = false;
-    protected[$shouldPromptUserToInteract] = true;
 
     protected[$controls] = new SmoothControls(
-        this[$scene].getCamera() as PerspectiveCamera, this[$userInputElement]);
+        this[$scene].camera as PerspectiveCamera, this[$userInputElement]);
 
     protected[$zoomAdjustedFieldOfView] = 0;
     protected[$lastSpherical] = new Spherical();
     protected[$jumpCamera] = false;
-    private[$target] = new Vector3();
-    private[$goalTarget] = new Vector3();
-    private[$targetDamperX] = new Damper();
-    private[$targetDamperY] = new Damper();
-    private[$targetDamperZ] = new Damper();
 
     protected[$changeHandler] = (event: Event) =>
         this[$onChange](event as ChangeEvent);
@@ -369,7 +356,7 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
     }
 
     getCameraTarget(): Vector3D {
-      return this[$target];
+      return this[$scene].getTarget();
     }
 
     getFieldOfView(): number {
@@ -384,11 +371,10 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
     resetInteractionPrompt() {
       this[$lastPromptOffset] = 0;
       this[$promptElementVisibleTime] = Infinity;
-      this[$userPromptedOnce] = false;
+      this[$userHasInteracted] = false;
       this[$waitingToPromptUser] =
           this.interactionPrompt === InteractionPromptStrategy.AUTO &&
           this.cameraControls;
-      this[$shouldPromptUserToInteract] = true;
     }
 
     connectedCallback() {
@@ -460,9 +446,7 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
       if (this[$jumpCamera] === true) {
         Promise.resolve().then(() => {
           this[$controls].jumpToGoal();
-          const goal = this[$goalTarget];
-          this[$target].copy(goal);
-          this[$scene].setTarget(goal.x, goal.y, goal.z);
+          this[$scene].jumpToGoal();
           this[$jumpCamera] = false;
         });
       }
@@ -473,7 +457,6 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
     }
 
     [$syncCameraOrbit](style: EvaluatedStyle<SphericalIntrinsics>) {
-      this[$updateCameraForRadius](style[2]);
       this[$controls].setOrbit(style[0], style[1], style[2]);
     }
 
@@ -492,6 +475,7 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
         maximumPolarAngle: style[1],
         maximumRadius: style[2]
       });
+      this[$updateCameraForRadius](style[2]);
       this.jumpCameraToGoal();
     }
 
@@ -509,7 +493,7 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
 
     [$syncCameraTarget](style: EvaluatedStyle<Vector3Intrinsics>) {
       const [x, y, z] = style;
-      this[$goalTarget].set(x, y, z);
+      this[$scene].setTarget(x, y, z);
     }
 
     [$tick](time: number, delta: number) {
@@ -520,8 +504,7 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
       }
 
       const now = performance.now();
-      if (this[$waitingToPromptUser] &&
-          this.interactionPrompt !== InteractionPromptStrategy.NONE) {
+      if (this[$waitingToPromptUser]) {
         const thresholdTime =
             this.interactionPrompt === InteractionPromptStrategy.AUTO ?
             this[$loadedTime] :
@@ -532,12 +515,6 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
           this[$userInputElement].setAttribute(
               'aria-label', INTERACTION_PROMPT);
 
-          // NOTE(cdata): After notifying users that the controls are
-          // available, we flag that the user has been prompted at least
-          // once, and then effectively stop the idle timer. If the camera
-          // orbit changes after this point, the user will never be prompted
-          // again for this particular <model-element> instance:
-          this[$userPromptedOnce] = true;
           this[$waitingToPromptUser] = false;
           this[$promptElementVisibleTime] = now;
 
@@ -568,18 +545,8 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
         this[$needsRender]();
       }
 
-      const goal = this[$goalTarget];
-      if (!goal.equals(this[$target])) {
-        const radius = this[$scene].model.idealCameraDistance;
-        let {x, y, z} = this[$target];
-        x = this[$targetDamperX].update(x, goal.x, delta, radius);
-        y = this[$targetDamperY].update(y, goal.y, delta, radius);
-        z = this[$targetDamperZ].update(z, goal.z, delta, radius);
-        this[$target].set(x, y, z);
-        this[$scene].setTarget(x, y, z);
-      }
-
       this[$controls].update(time, delta);
+      this[$scene].updateTarget(delta);
     }
 
     [$deferInteractionPrompt]() {
@@ -587,14 +554,6 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
       this[$waitingToPromptUser] = false;
       this[$promptElement].classList.remove('visible');
       this[$promptElementVisibleTime] = Infinity;
-
-      // Implicitly there was some reason to defer the prompt. If the user
-      // has been prompted at least once already, we no longer need to
-      // prompt the user, although if they have never been prompted we
-      // should probably prompt them at least once just in case.
-      if (this[$userPromptedOnce]) {
-        this[$shouldPromptUserToInteract] = false;
-      }
     }
 
     /**
@@ -647,10 +606,6 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
     }
 
     [$onResize](event: any) {
-      if (this[$renderer].isPresenting) {
-        return;
-      }
-
       const controls = this[$controls];
       const oldFramedFieldOfView = this[$scene].framedFieldOfView;
 
@@ -702,12 +657,8 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
         input.setAttribute('aria-label', ariaLabel);
       }
 
-      // NOTE(cdata): When focused, if the user has yet to interact with the
-      // camera controls (that is, we "should" prompt the user), we begin
-      // the idle timer and indicate that we are waiting for it to cross the
-      // prompt threshold:
-      if (!isFinite(this[$promptElementVisibleTime]) &&
-          this[$shouldPromptUserToInteract]) {
+      if (this.interactionPrompt === InteractionPromptStrategy.WHEN_FOCUSED &&
+          !this[$userHasInteracted]) {
         this[$waitingToPromptUser] = true;
       }
     }
@@ -725,6 +676,7 @@ export const ControlsMixin = <T extends Constructor<ModelViewerElementBase>>(
       this[$needsRender]();
 
       if (source === ChangeSource.USER_INTERACTION) {
+        this[$userHasInteracted] = true;
         this[$deferInteractionPrompt]();
       }
 

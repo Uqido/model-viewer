@@ -15,6 +15,7 @@
 
 import {Camera, Vector3} from 'three';
 
+import {IS_IE11} from '../../constants.js';
 import {$controls, $promptAnimatedContainer, $promptElement, CameraChangeDetails, cameraOrbitIntrinsics, ControlsInterface, ControlsMixin, INTERACTION_PROMPT, SphericalPosition} from '../../features/controls.js';
 import ModelViewerElementBase, {$canvas, $scene, $userInputElement, Vector3D} from '../../model-viewer-base.js';
 import {StyleEvaluator} from '../../styles/evaluators.js';
@@ -445,6 +446,31 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
         expect(controls.options.maximumRadius).to.be.at.least(cameraDistance);
       });
 
+      test(
+          'with a large radius, sets far plane to contain the model',
+          async () => {
+            const maxRadius = 10;
+            element.maxCameraOrbit = `auto auto ${maxRadius}m`;
+            await timePasses();
+
+            const cameraDistance = element[$scene].camera.position.distanceTo(
+                element[$scene].model.position);
+            expect(controls.camera.far)
+                .to.be.at.least(cameraDistance + maxRadius);
+          });
+
+      test(
+          'with zero radius, sets far plane to contain the model', async () => {
+            const maxRadius = 0;
+            element.maxCameraOrbit = `auto auto ${maxRadius}m`;
+            await timePasses();
+
+            const cameraDistance = element[$scene].camera.position.distanceTo(
+                element[$scene].model.position);
+            expect(controls.camera.far)
+                .to.be.at.least(cameraDistance + maxRadius);
+          });
+
       test('disables interaction if disabled after enabled', async () => {
         element.cameraControls = false;
         await timePasses();
@@ -566,7 +592,8 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
                 .to.be.equal(true);
           });
 
-          test(
+          // TODO(#1141)
+          (IS_IE11 ? test.skip : test)(
               'does not prompt users to interact before a model is loaded',
               async () => {
                 element.src = null;
