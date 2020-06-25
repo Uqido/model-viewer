@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import {ConstructedWithArguments, Constructor, PBRMetallicRoughness as PBRMetallicRoughnessInterface, RGBA, ThreeDOMElement} from '../api.js';
+import {ConstructedWithArguments, Constructor, PBRMetallicRoughness as PBRMetallicRoughnessInterface, RGBA, TextureInfo, ThreeDOMElement} from '../api.js';
 import {SerializedPBRMetallicRoughness} from '../protocol.js';
 
 import {ModelKernel} from './model-kernel.js';
@@ -39,6 +39,8 @@ export function definePBRMetallicRoughness(
   const $kernel = Symbol('kernel');
   const $baseColorFactor = Symbol('baseColorFactor');
   const $visible = Symbol('visible');
+  const $baseColorTexture = Symbol('baseColorTexture');
+  const $metallicRoughnessTexture = Symbol('metallicRoughnessTexture');
 
   /**
    * PBRMetallicRoughness exposes the PBR properties for a given Material.
@@ -48,6 +50,8 @@ export function definePBRMetallicRoughness(
     protected[$kernel]: ModelKernel;
     protected[$baseColorFactor]: Readonly<RGBA>;
     protected[$visible]: boolean;
+    protected[$baseColorTexture]: TextureInfo|null = null;
+    protected[$metallicRoughnessTexture]: TextureInfo|null = null;
 
     constructor(
         kernel: ModelKernel, serialized: SerializedPBRMetallicRoughness) {
@@ -56,6 +60,18 @@ export function definePBRMetallicRoughness(
       this[$visible] = serialized.visible;
       this[$baseColorFactor] =
           Object.freeze(serialized.baseColorFactor) as RGBA;
+
+      const {baseColorTexture, metallicRoughnessTexture} = serialized;
+
+      if (baseColorTexture != null) {
+        this[$baseColorTexture] =
+            kernel.deserialize('texture-info', baseColorTexture);
+      }
+
+      if (metallicRoughnessTexture != null) {
+        this[$metallicRoughnessTexture] =
+            kernel.deserialize('texture-info', metallicRoughnessTexture);
+      }
     }
 
 
@@ -74,6 +90,14 @@ export function definePBRMetallicRoughness(
      */
     get baseColorFactor() {
       return this[$baseColorFactor];
+    }
+
+    get baseColorTexture() {
+      return this[$baseColorTexture];
+    }
+
+    get metallicRoughnessTexture() {
+      return this[$metallicRoughnessTexture];
     }
 
     /**

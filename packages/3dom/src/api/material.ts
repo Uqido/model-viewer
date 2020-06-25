@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import {ConstructedWithArguments, Constructor, Material as MaterialInterface, PBRMetallicRoughness, ThreeDOMElement} from '../api.js';
+import {ConstructedWithArguments, Constructor, Material as MaterialInterface, PBRMetallicRoughness, TextureInfo, ThreeDOMElement} from '../api.js';
 import {SerializedMaterial} from '../protocol.js';
 
 import {ModelKernel} from './model-kernel.js';
@@ -34,6 +34,9 @@ export function defineMaterial(ThreeDOMElement: Constructor<ThreeDOMElement>):
     MaterialConstructor {
   const $pbrMetallicRoughness = Symbol('pbrMetallicRoughness');
   const $visible = Symbol('visible');
+  const $normalTexture = Symbol('normalTexture');
+  const $occlusionTexture = Symbol('occlusionTexture');
+  const $emissiveTexture = Symbol('emissiveTexture');
   const $kernel = Symbol('kernel');
   const $name = Symbol('name');
 
@@ -45,6 +48,10 @@ export function defineMaterial(ThreeDOMElement: Constructor<ThreeDOMElement>):
   class Material extends ThreeDOMElement implements MaterialInterface {
     protected[$pbrMetallicRoughness]: PBRMetallicRoughness;
     protected[$visible]: boolean;
+    protected[$normalTexture]: TextureInfo|null = null;
+    protected[$occlusionTexture]: TextureInfo|null = null;
+    protected[$emissiveTexture]: TextureInfo|null = null;
+
     protected[$kernel]: ModelKernel;
     protected[$name]: string;
 
@@ -57,8 +64,30 @@ export function defineMaterial(ThreeDOMElement: Constructor<ThreeDOMElement>):
         this[$name] = serialized.name;
       }
 
-      this[$pbrMetallicRoughness] = kernel.deserialize(
-          'pbr-metallic-roughness', serialized.pbrMetallicRoughness);
+      const {
+        pbrMetallicRoughness,
+        normalTexture,
+        occlusionTexture,
+        emissiveTexture
+      } = serialized;
+
+      this[$pbrMetallicRoughness] =
+          kernel.deserialize('pbr-metallic-roughness', pbrMetallicRoughness);
+
+      if (normalTexture != null) {
+        this[$normalTexture] =
+            kernel.deserialize('texture-info', normalTexture);
+      }
+
+      if (occlusionTexture != null) {
+        this[$occlusionTexture] =
+            kernel.deserialize('texture-info', occlusionTexture);
+      }
+
+      if (emissiveTexture != null) {
+        this[$emissiveTexture] =
+            kernel.deserialize('texture-info', emissiveTexture);
+      }
     }
 
     /**
@@ -66,6 +95,17 @@ export function defineMaterial(ThreeDOMElement: Constructor<ThreeDOMElement>):
      */
     get pbrMetallicRoughness() {
       return this[$pbrMetallicRoughness];
+    }
+
+    get normalTexture() {
+      return this[$normalTexture];
+    }
+
+    get occlusionTexture() {
+      return this[$occlusionTexture];
+    }
+    get emissiveTexture() {
+      return this[$emissiveTexture];
     }
 
     /**
