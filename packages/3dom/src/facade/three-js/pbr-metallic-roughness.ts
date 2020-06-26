@@ -89,25 +89,14 @@ export class PBRMetallicRoughness extends ThreeDOMElement implements
     return this[$metallicRoughnessTexture];
   }
 
-  async mutate(property: 'baseColorFactor', value: RGBA): Promise<void> {
-    if (property !== 'baseColorFactor') {
-      throw new Error(`Cannot mutate ${property} on PBRMetallicRoughness`);
-    }
+  async mutate(property: 'baseColorFactor', value: RGBA|boolean|number): Promise<void> {
+    if (property === 'baseColorFactor' && value instanceof RGBA) {
 
-    for (const material of this[$threeMaterials]) {
-      material.color.fromArray(value);
-      material.opacity = value[3];
+    } 
 
-      const pbrMetallicRoughness =
-          this[$sourceObject] as GLTFPBRMetallicRoughness;
+    
 
-      if (value[0] === 1 && value[1] === 1 && value[2] === 1 &&
-          value[3] === 1) {
-        delete pbrMetallicRoughness.baseColorFactor;
-      } else {
-        pbrMetallicRoughness.baseColorFactor = value;
-      }
-    }
+    throw new Error(`Cannot mutate ${property} on PBRMetallicRoughness`);
   }
 
   set visible(value: boolean) {
