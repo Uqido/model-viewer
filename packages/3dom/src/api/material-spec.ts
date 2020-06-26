@@ -26,7 +26,7 @@ suite('api/material', () => {
       const GeneratedConstructor = defineMaterial(ThreeDOMElement);
       const instance = new GeneratedConstructor(new FakeModelKernel(), {
         pbrMetallicRoughness:
-            {id: 1, baseColorFactor: [0, 0, 0, 1], visible: true},
+            {id: 1, baseColorFactor: [0, 0, 0, 1], visible: true, normalScale: 1, doubleSide: false},
         id: 0
       });
 
@@ -46,7 +46,7 @@ suite('api/material', () => {
       test('produces elements with the correct owner model', () => {
         const instance = new GeneratedConstructor(kernel, {
           pbrMetallicRoughness:
-              {id: 1, baseColorFactor: [0, 0, 0, 1], visible: true},
+              {id: 1, baseColorFactor: [0, 0, 0, 1], visible: true, normalScale: 1, doubleSide: false},
           id: 0
         });
 
@@ -56,7 +56,7 @@ suite('api/material', () => {
       test('expresses the material name when available', () => {
         const instance = new GeneratedConstructor(kernel, {
           pbrMetallicRoughness:
-              {id: 1, baseColorFactor: [0, 0, 0, 1], visible: true},
+              {id: 1, baseColorFactor: [0, 0, 0, 1], visible: true, normalScale: 1, doubleSide: false},
           id: 0,
           name: 'foo'
         });

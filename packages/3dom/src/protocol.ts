@@ -119,6 +119,8 @@ export declare interface SerializedPBRMetallicRoughness extends
     SerializedThreeDOMElement {
   baseColorFactor: RGBA;
   visible: boolean;
+  normalScale: number;
+  doubleSide: boolean;
 }
 
 /**

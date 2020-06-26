@@ -17,6 +17,7 @@ import {RGBA} from '../api.js';
 import {GLTF, GLTFElement} from '../gltf-2.0.js';
 import {SerializedMaterial, SerializedModel, SerializedPBRMetallicRoughness, SerializedThreeDOMElement} from '../protocol.js';
 
+
 export interface ThreeDOMElement {
   readonly ownerModel: Model;
   readonly internalID: number;
@@ -33,6 +34,8 @@ export interface ThreeDOMElement {
  */
 export interface PBRMetallicRoughness extends ThreeDOMElement {
   visible: boolean;
+  doubleSide: boolean;
+  normalScale: number;
   baseColorFactor: RGBA;
   toJSON(): SerializedPBRMetallicRoughness;
 }

@@ -17,6 +17,7 @@ import {ConstructedWithArguments, Constructor, Material as MaterialInterface, PB
 import {SerializedMaterial} from '../protocol.js';
 
 import {ModelKernel} from './model-kernel.js';
+import {Vector2} from 'three/src/math/Vector2';
 
 export type MaterialConstructor = Constructor<MaterialInterface>&
     ConstructedWithArguments<[ModelKernel, SerializedMaterial]>;
@@ -34,8 +35,10 @@ export function defineMaterial(ThreeDOMElement: Constructor<ThreeDOMElement>):
     MaterialConstructor {
   const $pbrMetallicRoughness = Symbol('pbrMetallicRoughness');
   const $visible = Symbol('visible');
+  const $normalScale = Symbol('normalScale');
   const $kernel = Symbol('kernel');
   const $name = Symbol('name');
+  const $doubleSide = Symbol('doubleSide');
 
   /**
    * A Material represents a live material in the backing scene graph. Its
@@ -45,8 +48,10 @@ export function defineMaterial(ThreeDOMElement: Constructor<ThreeDOMElement>):
   class Material extends ThreeDOMElement implements MaterialInterface {
     protected[$pbrMetallicRoughness]: PBRMetallicRoughness;
     protected[$visible]: boolean;
+    protected[$normalScale]: Vector2;
     protected[$kernel]: ModelKernel;
     protected[$name]: string;
+    protected[$doubleSide]: boolean;
 
     constructor(kernel: ModelKernel, serialized: SerializedMaterial) {
       super(kernel, serialized);

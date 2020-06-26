@@ -39,6 +39,8 @@ export function definePBRMetallicRoughness(
   const $kernel = Symbol('kernel');
   const $baseColorFactor = Symbol('baseColorFactor');
   const $visible = Symbol('visible');
+  const $normalScale = Symbol('normalScale');
+  const $doubleSide = Symbol('doubleSide');
 
   /**
    * PBRMetallicRoughness exposes the PBR properties for a given Material.
@@ -48,24 +50,48 @@ export function definePBRMetallicRoughness(
     protected[$kernel]: ModelKernel;
     protected[$baseColorFactor]: Readonly<RGBA>;
     protected[$visible]: boolean;
+    protected[$normalScale]: number;
+    protected[$doubleSide]: boolean;
 
     constructor(
         kernel: ModelKernel, serialized: SerializedPBRMetallicRoughness) {
       super(kernel, serialized);
       this[$kernel] = kernel;
       this[$visible] = serialized.visible;
+      this[$normalScale] = serialized.normalScale;
+      this[$doubleSide] = serialized.doubleSide;
       this[$baseColorFactor] =
           Object.freeze(serialized.baseColorFactor) as RGBA;
     }
-
 
     get visible() {
       return this[$visible];
     }
 
     async setVisible(value: boolean) {
+      console.log('setVisible');
       await this[$kernel].mutate(this, 'visible', value);
       this[$visible] = value;
+    }
+
+    get doubleSide() {
+      return this[$doubleSide];
+    }
+
+    async setDoubleSide(value: boolean) {
+      console.log('setDoubleSide');
+      await this[$kernel].mutate(this, 'doubleSide', value);
+      this[$doubleSide] = value;
+    }
+
+    get normalScale() {
+      return this[$normalScale];
+    }
+
+    async setNormalScale(value: number) {
+      console.log('setNormalScale');
+      await this[$kernel].mutate(this, 'normalScale', value);
+      this[$normalScale] = value;
     }
 
 

@@ -22,6 +22,8 @@ import {PBRMetallicRoughness as PBRMetallicRoughnessInterface} from '../api.js';
 
 import {ModelGraft} from './model-graft.js';
 import {$correlatedObjects, $sourceObject, ThreeDOMElement} from './three-dom-element.js';
+import {Vector2} from 'three/src/math/Vector2';
+import * as THREE from 'three';
 
 const $threeMaterials = Symbol('threeMaterials');
 
@@ -62,12 +64,34 @@ export class PBRMetallicRoughness extends ThreeDOMElement implements
     }
   }
 
-  get visible(): boolean {
-    return this[$threeMaterial].visible;
+  set visible(value: boolean) {
+    for (const material of this[$threeMaterials]) {
+      material.visible = value;
+    }
   }
 
-  set visible(value: boolean) {
-    this[$threeMaterial].visible = value;
+  get visible(): boolean {
+    return (this.sourceObject as PBRMetallicRoughness).visible;
+  }
+
+  set doubleSide(isDouble: boolean) {
+    for (const material of this[$threeMaterials]) {
+      material.side=isDouble?THREE.DoubleSide:THREE.FrontSide;
+    }
+  }
+
+  get doubleSide() {
+    return (this.sourceObject as PBRMetallicRoughness).doubleSide;
+  }
+
+  set normalScale(value: number) {
+    for (const material of this[$threeMaterials]) {
+      material.normalScale = new Vector2(value, value);
+    }
+  }
+
+  get normalScale(): number {
+    return (this.sourceObject as PBRMetallicRoughness).normalScale;
   }
 
 
@@ -75,6 +99,8 @@ export class PBRMetallicRoughness extends ThreeDOMElement implements
     const serialized: Partial<SerializedPBRMetallicRoughness> = super.toJSON();
     serialized.baseColorFactor = this.baseColorFactor;
     serialized.visible = this.visible;
+    serialized.normalScale = this.normalScale;
+    serialized.doubleSide = this.doubleSide;
     return serialized as SerializedPBRMetallicRoughness;
   }
 }
