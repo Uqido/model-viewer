@@ -85,7 +85,6 @@ export function definePBRMetallicRoughness(
     }
 
     async setVisible(value: boolean) {
-      console.log('setVisible');
       await this[$kernel].mutate(this, 'visible', value);
       this[$visible] = value;
     }
@@ -95,7 +94,6 @@ export function definePBRMetallicRoughness(
     }
 
     async setDoubleSide(value: boolean) {
-      console.log('setDoubleSide');
       await this[$kernel].mutate(this, 'doubleSide', value);
       this[$doubleSide] = value;
     }
@@ -105,7 +103,6 @@ export function definePBRMetallicRoughness(
     }
 
     async setNormalScale(value: number) {
-      console.log('setNormalScale');
       await this[$kernel].mutate(this, 'normalScale', value);
       this[$normalScale] = value;
     }

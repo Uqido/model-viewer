@@ -89,19 +89,43 @@ export class PBRMetallicRoughness extends ThreeDOMElement implements
     return this[$metallicRoughnessTexture];
   }
 
-  async mutate(property: 'baseColorFactor', value: RGBA|boolean|number): Promise<void> {
-    if (property === 'baseColorFactor' && value instanceof RGBA) {
+  async mutate(property: 'baseColorFactor' | 'visible' | 'normalScale' | 'doubleSide', value: RGBA | boolean | number): Promise<void> {
+    switch(property) {
+      case 'baseColorFactor':
+        for (const material of this[$threeMaterials]) {
+          material.color.fromArray(value as RGBA);
+          material.opacity = (value as RGBA)[3];
 
-    } 
+          const pbrMetallicRoughness =
+              this[$sourceObject] as GLTFPBRMetallicRoughness;
 
-    
-
-    throw new Error(`Cannot mutate ${property} on PBRMetallicRoughness`);
-  }
-
-  set visible(value: boolean) {
-    for (const material of this[$threeMaterials]) {
-      material.visible = value;
+          if (value as RGBA[0] === 1 && value as RGBA[1] === 1 && value as RGBA[2] === 1 &&
+              value as RGBA[3] === 1) {
+            delete pbrMetallicRoughness.baseColorFactor;
+          } else {
+            pbrMetallicRoughness.baseColorFactor = value as RGBA;
+          }
+        }
+        break;
+      case 'visible':
+        for (const material of this[$threeMaterials]) {
+          material.visible = value as boolean;
+        }
+        break;
+      case 'normalScale':
+        for (const material of this[$threeMaterials]) {
+          const strength=value as number;
+          material.normalScale = new Vector2(strength, strength);
+        }
+        break;
+      case 'doubleSide':
+        for (const material of this[$threeMaterials]) {
+          const isDouble=value as boolean;
+          material.side=isDouble?THREE.DoubleSide:THREE.FrontSide;
+        }
+        break;
+      default:
+        throw new Error(`Cannot mutate ${property} on PBRMetallicRoughness`);
     }
   }
 
@@ -109,20 +133,8 @@ export class PBRMetallicRoughness extends ThreeDOMElement implements
     return (this.sourceObject as PBRMetallicRoughness).visible;
   }
 
-  set doubleSide(isDouble: boolean) {
-    for (const material of this[$threeMaterials]) {
-      material.side=isDouble?THREE.DoubleSide:THREE.FrontSide;
-    }
-  }
-
-  get doubleSide() {
+  get doubleSide(): boolean {
     return (this.sourceObject as PBRMetallicRoughness).doubleSide;
-  }
-
-  set normalScale(value: number) {
-    for (const material of this[$threeMaterials]) {
-      material.normalScale = new Vector2(value, value);
-    }
   }
 
   get normalScale(): number {
@@ -146,11 +158,11 @@ export class PBRMetallicRoughness extends ThreeDOMElement implements
       serialized.visible = visible;
     }
 
-    if (normalScale != null){
+    if (normalScale != null) {
       serialized.normalScale = normalScale;
     }
 
-    if (doubleSide != null){
+    if (doubleSide != null) {
       serialized.doubleSide = doubleSide;
     }
     return serialized as SerializedPBRMetallicRoughness;
