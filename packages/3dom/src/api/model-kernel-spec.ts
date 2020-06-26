@@ -63,7 +63,9 @@ suite('api/model-kernel', () => {
               pbrMetallicRoughness: {
                 id: getLocallyUniqueId(),
                 baseColorFactor: [0, 0, 0, 1] as RGBA,
-                visible: true
+                visible: true,
+                normalScale: 1,
+                doubleSide: false
               },
             }],
             modelUri: ''

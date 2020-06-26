@@ -50,6 +50,8 @@ export interface PBRMetallicRoughness extends ThreeDOMElement {
 
   mutate(property: 'baseColorFactor', value: RGBA): Promise<void>;
 
+  doubleSide: boolean;
+  normalScale: number;
   toJSON(): SerializedPBRMetallicRoughness;
 }
 

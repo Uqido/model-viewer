@@ -14,10 +14,11 @@
  */
 
 import {property} from 'lit-element';
-import {Texture} from 'three';
+import {Mesh, Object3D, Texture} from 'three';
 
 import ModelViewerElementBase, {$isElementInViewport, $needsRender, $onModelLoad, $progressTracker, $renderer, $scene} from '../model-viewer-base.js';
 import {Constructor, deserializeUrl} from '../utilities.js';
+import * as THREE from "three";
 
 export const BASE_OPACITY = 0.1;
 const DEFAULT_SHADOW_INTENSITY = 0.0;
@@ -28,6 +29,7 @@ const $currentEnvironmentMap = Symbol('currentEnvironmentMap');
 const $applyEnvironmentMap = Symbol('applyEnvironmentMap');
 const $updateEnvironment = Symbol('updateEnvironment');
 const $cancelEnvironmentUpdate = Symbol('cancelEnvironmentUpdate');
+const $doubleSideTraverse = Symbol('doubleSideTraverse');
 
 export declare interface EnvironmentInterface {
   environmentImage: string|null;
@@ -35,6 +37,7 @@ export declare interface EnvironmentInterface {
   shadowIntensity: number;
   shadowSoftness: number;
   exposure: number;
+  doubleSide: Boolean;
 }
 
 export const EnvironmentMixin = <T extends Constructor<ModelViewerElementBase>>(
@@ -65,12 +68,22 @@ export const EnvironmentMixin = <T extends Constructor<ModelViewerElementBase>>(
     })
     exposure: number = DEFAULT_EXPOSURE;
 
+    @property({
+      type: Boolean,
+    })
+    doubleSide: boolean = false;
+
     private[$currentEnvironmentMap]: Texture|null = null;
 
     private[$cancelEnvironmentUpdate]: ((...args: any[]) => any)|null = null;
 
     updated(changedProperties: Map<string|number|symbol, unknown>) {
       super.updated(changedProperties);
+
+      if(changedProperties.has('doubleSide')){
+        this[$doubleSideTraverse]();
+        this[$needsRender]();
+      }
 
       if (changedProperties.has('shadowIntensity')) {
         this[$scene].setShadowIntensity(this.shadowIntensity * BASE_OPACITY);
@@ -94,12 +107,27 @@ export const EnvironmentMixin = <T extends Constructor<ModelViewerElementBase>>(
       }
     }
 
+    [$doubleSideTraverse](){
+      this[$scene].traverse((node: Object3D) => {
+        if (!(node as Mesh).isMesh) {
+          return;
+        }
+        const mesh = node as Mesh;
+        const materials =
+            Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        materials.forEach(material => {
+          material.side=this.doubleSide?THREE.DoubleSide:THREE.FrontSide;
+        });
+      });
+    }
+
     [$onModelLoad](event: any) {
       super[$onModelLoad](event);
 
       if (this[$currentEnvironmentMap] != null) {
         this[$applyEnvironmentMap](this[$currentEnvironmentMap]);
       }
+      this[$doubleSideTraverse]();
     }
 
     async[$updateEnvironment]() {

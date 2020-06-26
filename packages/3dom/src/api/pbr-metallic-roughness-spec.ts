@@ -27,7 +27,7 @@ suite('api/pbr-metallic-roughness', () => {
       const GeneratedConstructor = definePBRMetallicRoughness(ThreeDOMElement);
       const instance = new GeneratedConstructor(
           new FakeModelKernel(),
-          {id: 0, baseColorFactor: [0, 0, 0, 1], visible: true});
+          {id: 0, baseColorFactor: [0, 0, 0, 1], visible: true, normalScale: 1, doubleSide: false});
 
       expect(instance).to.be.ok;
     });
@@ -36,7 +36,7 @@ suite('api/pbr-metallic-roughness', () => {
       const kernel = new FakeModelKernel();
       const GeneratedConstructor = definePBRMetallicRoughness(ThreeDOMElement);
       const instance = new GeneratedConstructor(
-          kernel, {id: 0, baseColorFactor: [0, 0, 0, 1], visible: true});
+          kernel, {id: 0, baseColorFactor: [0, 0, 0, 1], visible: true, normalScale: 1, doubleSide: false});
 
       expect(instance.ownerModel).to.be.equal(kernel.model);
     });
@@ -48,7 +48,7 @@ suite('api/pbr-metallic-roughness', () => {
         const baseColorFactor: RGBA =
             [Math.random(), Math.random(), Math.random(), Math.random()];
         const instance = new GeneratedConstructor(
-            new FakeModelKernel(), {id: 0, baseColorFactor, visible: true});
+            new FakeModelKernel(), {id: 0, baseColorFactor, visible: true, normalScale: 1, doubleSide: false});
 
         expect(instance.baseColorFactor).to.be.deep.equal(baseColorFactor);
       });

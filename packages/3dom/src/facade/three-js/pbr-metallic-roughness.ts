@@ -23,6 +23,8 @@ import {PBRMetallicRoughness as PBRMetallicRoughnessInterface} from '../api.js';
 import {ModelGraft} from './model-graft.js';
 import {TextureInfo} from './texture-info.js';
 import {$correlatedObjects, $sourceObject, ThreeDOMElement} from './three-dom-element.js';
+import {Vector2} from 'three/src/math/Vector2';
+import * as THREE from 'three';
 
 const $threeMaterials = Symbol('threeMaterials');
 const $baseColorTexture = Symbol('baseColorTexture');
@@ -109,13 +111,39 @@ export class PBRMetallicRoughness extends ThreeDOMElement implements
   }
 
   set visible(value: boolean) {
-    this[$threeMaterials].forEach(mat=>mat.visible=value)
+    for (const material of this[$threeMaterials]) {
+      material.visible = value;
+    }
+  }
+
+  get visible(): boolean {
+    return (this.sourceObject as PBRMetallicRoughness).visible;
+  }
+
+  set doubleSide(isDouble: boolean) {
+    for (const material of this[$threeMaterials]) {
+      material.side=isDouble?THREE.DoubleSide:THREE.FrontSide;
+    }
+  }
+
+  get doubleSide() {
+    return (this.sourceObject as PBRMetallicRoughness).doubleSide;
+  }
+
+  set normalScale(value: number) {
+    for (const material of this[$threeMaterials]) {
+      material.normalScale = new Vector2(value, value);
+    }
+  }
+
+  get normalScale(): number {
+    return (this.sourceObject as PBRMetallicRoughness).normalScale;
   }
 
 
   toJSON(): SerializedPBRMetallicRoughness {
     const serialized: Partial<SerializedPBRMetallicRoughness> = super.toJSON();
-    const {baseColorTexture, baseColorFactor, visible} = this;
+    const {baseColorTexture, baseColorFactor, visible, normalScale, doubleSide} = this;
 
     if (baseColorTexture != null) {
       serialized.baseColorTexture = baseColorTexture.toJSON();
@@ -129,6 +157,13 @@ export class PBRMetallicRoughness extends ThreeDOMElement implements
       serialized.visible = visible;
     }
 
+    if (normalScale != null){
+      serialized.normalScale = normalScale;
+    }
+
+    if (doubleSide != null){
+      serialized.doubleSide = doubleSide;
+    }
     return serialized as SerializedPBRMetallicRoughness;
   }
 }

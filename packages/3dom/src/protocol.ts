@@ -128,6 +128,8 @@ export declare interface SerializedPBRMetallicRoughness extends
   visible: boolean;
   baseColorTexture?: SerializedTextureInfo;
   metallicRoughnessTexture?: SerializedTextureInfo;
+  normalScale: number;
+  doubleSide: boolean;
 }
 
 /**
