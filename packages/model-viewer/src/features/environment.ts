@@ -14,11 +14,12 @@
  */
 
 import {property} from 'lit-element';
-import {Mesh, Object3D, Texture} from 'three';
+import {Event as ThreeEvent, Texture} from 'three';
 
-import ModelViewerElementBase, {$isElementInViewport, $needsRender, $onModelLoad, $progressTracker, $renderer, $scene} from '../model-viewer-base.js';
+import ModelViewerElementBase, {$needsRender, $onModelLoad, $progressTracker, $renderer, $scene, $shouldAttemptPreload} from '../model-viewer-base.js';
+import {PreloadEvent} from '../three-components/CachingGLTFLoader.js';
+import {EnvironmentMapAndSkybox} from '../three-components/TextureUtils.js';
 import {Constructor, deserializeUrl} from '../utilities.js';
-import * as THREE from "three";
 
 export const BASE_OPACITY = 0.1;
 const DEFAULT_SHADOW_INTENSITY = 0.0;
@@ -29,7 +30,7 @@ const $currentEnvironmentMap = Symbol('currentEnvironmentMap');
 const $applyEnvironmentMap = Symbol('applyEnvironmentMap');
 const $updateEnvironment = Symbol('updateEnvironment');
 const $cancelEnvironmentUpdate = Symbol('cancelEnvironmentUpdate');
-const $doubleSideTraverse = Symbol('doubleSideTraverse');
+const $onPreload = Symbol('onPreload');
 
 export declare interface EnvironmentInterface {
   environmentImage: string|null;
@@ -37,24 +38,15 @@ export declare interface EnvironmentInterface {
   shadowIntensity: number;
   shadowSoftness: number;
   exposure: number;
-  doubleSide: Boolean;
 }
 
 export const EnvironmentMixin = <T extends Constructor<ModelViewerElementBase>>(
     ModelViewerElement: T): Constructor<EnvironmentInterface>&T => {
   class EnvironmentModelViewerElement extends ModelViewerElement {
-    @property({
-      type: String,
-      attribute: 'environment-image',
-      converter: {fromAttribute: deserializeUrl}
-    })
+    @property({type: String, attribute: 'environment-image'})
     environmentImage: string|null = null;
 
-    @property({
-      type: String,
-      attribute: 'skybox-image',
-      converter: {fromAttribute: deserializeUrl}
-    })
+    @property({type: String, attribute: 'skybox-image'})
     skyboxImage: string|null = null;
 
     @property({type: Number, attribute: 'shadow-intensity'})
@@ -68,22 +60,28 @@ export const EnvironmentMixin = <T extends Constructor<ModelViewerElementBase>>(
     })
     exposure: number = DEFAULT_EXPOSURE;
 
-    @property({
-      type: Boolean,
-    })
-    doubleSide: boolean = false;
-
     private[$currentEnvironmentMap]: Texture|null = null;
 
     private[$cancelEnvironmentUpdate]: ((...args: any[]) => any)|null = null;
 
+    private[$onPreload] = (event: ThreeEvent) => {
+      if ((event as PreloadEvent).element === this) {
+        this[$updateEnvironment]();
+      }
+    };
+
+    connectedCallback() {
+      super.connectedCallback();
+      this[$renderer].loader.addEventListener('preload', this[$onPreload]);
+    }
+
+    disconnectedCallback() {
+      super.disconnectedCallback();
+      this[$renderer].loader.removeEventListener('preload', this[$onPreload]);
+    }
+
     updated(changedProperties: Map<string|number|symbol, unknown>) {
       super.updated(changedProperties);
-
-      if(changedProperties.has('doubleSide')){
-        this[$doubleSideTraverse]();
-        this[$needsRender]();
-      }
 
       if (changedProperties.has('shadowIntensity')) {
         this[$scene].setShadowIntensity(this.shadowIntensity * BASE_OPACITY);
@@ -100,41 +98,22 @@ export const EnvironmentMixin = <T extends Constructor<ModelViewerElementBase>>(
         this[$needsRender]();
       }
 
-      if (changedProperties.has('environmentImage') ||
-          changedProperties.has('skyboxImage') ||
-          changedProperties.has($isElementInViewport)) {
+      if ((changedProperties.has('environmentImage') ||
+           changedProperties.has('skyboxImage')) &&
+          this[$shouldAttemptPreload]()) {
         this[$updateEnvironment]();
       }
     }
 
-    [$doubleSideTraverse](){
-      this[$scene].traverse((node: Object3D) => {
-        if (!(node as Mesh).isMesh) {
-          return;
-        }
-        const mesh = node as Mesh;
-        const materials =
-            Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        materials.forEach(material => {
-          material.side=this.doubleSide?THREE.DoubleSide:THREE.FrontSide;
-        });
-      });
-    }
-
-    [$onModelLoad](event: any) {
-      super[$onModelLoad](event);
+    [$onModelLoad]() {
+      super[$onModelLoad]();
 
       if (this[$currentEnvironmentMap] != null) {
         this[$applyEnvironmentMap](this[$currentEnvironmentMap]);
       }
-      this[$doubleSideTraverse]();
     }
 
     async[$updateEnvironment]() {
-      if (!this[$isElementInViewport]) {
-        return;
-      }
-
       const {skyboxImage, environmentImage} = this;
 
       if (this[$cancelEnvironmentUpdate] != null) {
@@ -150,37 +129,35 @@ export const EnvironmentMixin = <T extends Constructor<ModelViewerElementBase>>(
 
       try {
         const {environmentMap, skybox} =
-            await new Promise(async (resolve, reject) => {
-              const texturesLoad = textureUtils.generateEnvironmentMapAndSkybox(
-                  skyboxImage,
-                  environmentImage,
-                  {progressTracker: this[$progressTracker]});
-              this[$cancelEnvironmentUpdate] = () => reject(texturesLoad);
-              resolve(await texturesLoad);
-            });
+            await new Promise<EnvironmentMapAndSkybox>(
+                async (resolve, reject) => {
+                  const texturesLoad =
+                      textureUtils.generateEnvironmentMapAndSkybox(
+                          deserializeUrl(skyboxImage),
+                          environmentImage,
+                          {progressTracker: this[$progressTracker]});
+                  this[$cancelEnvironmentUpdate] = () => reject(texturesLoad);
+                  resolve(await texturesLoad);
+                });
 
+        const environment = environmentMap.texture;
         if (skybox != null) {
-          this[$scene].background = skybox.texture;
+          // When using the same environment and skybox, use the environment as
+          // it gives HDR filtering.
+          this[$scene].background = (skybox as any).userData.url ===
+                  (environment as any).userData.url ?
+              environment :
+              skybox;
         } else {
           this[$scene].background = null;
         }
 
         this[$applyEnvironmentMap](environmentMap.texture);
-        this[$scene].model.dispatchEvent({type: 'envmap-update'});
+        this[$scene].dispatchEvent({type: 'envmap-update'});
       } catch (errorOrPromise) {
         if (errorOrPromise instanceof Error) {
           this[$applyEnvironmentMap](null);
           throw errorOrPromise;
-        }
-
-        const {environmentMap, skybox} = await errorOrPromise;
-
-        if (environmentMap != null) {
-          environmentMap.dispose();
-        }
-
-        if (skybox != null) {
-          skybox.dispose();
         }
       }
     }

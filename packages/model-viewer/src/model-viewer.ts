@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import 'three/src/polyfills.js';
+
 import {AnimationMixin} from './features/animation.js';
 import {AnnotationMixin} from './features/annotation.js';
 import {ARMixin} from './features/ar.js';
@@ -33,6 +35,8 @@ export const ModelViewerElement = AnnotationMixin(SceneGraphMixin(StagingMixin(
         FocusVisiblePolyfillMixin(ModelViewerElementBase)))))))));
 
 export type ModelViewerElement = InstanceType<typeof ModelViewerElement>;
+
+export {RGB, RGBA} from './three-components/gltf-instance/gltf-2.0';
 
 customElements.define('model-viewer', ModelViewerElement);
 

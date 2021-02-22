@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
-const resolve = require('rollup-plugin-node-resolve');
-const replace = require('rollup-plugin-replace');
+const {nodeResolve: resolve} = require('@rollup/plugin-node-resolve');
+const replace = require('@rollup/plugin-replace');
 const cleanup = require('rollup-plugin-cleanup');
 const {terser} = require('rollup-plugin-terser');
+const commonjs = require('@rollup/plugin-commonjs');
+const polyfill = require('rollup-plugin-polyfill');
 
 const {NODE_ENV} = process.env;
 
@@ -27,9 +29,10 @@ const onwarn = (warning, warn) => {
   }
 };
 
-let plugins = [resolve(), replace({'Reflect.decorate': 'undefined'})];
+let plugins =
+    [resolve({dedupe: ['three']}), replace({'Reflect.decorate': 'undefined'})];
 
-const watchFiles = ['lib/**', '../3dom/lib/**'];
+const watchFiles = ['lib/**'];
 
 const outputOptions = [{
   input: './lib/model-viewer.js',
@@ -49,6 +52,8 @@ const outputOptions = [{
 if (NODE_ENV !== 'development') {
   const pluginsIE11 = [
     ...plugins,
+    commonjs(),
+    polyfill(['object.values/auto']),
     cleanup({
       // Ideally we'd also clean third_party/three, which saves
       // ~45kb in filesize alone... but takes 2 minutes to build
@@ -74,29 +79,11 @@ if (NODE_ENV !== 'development') {
         plugins: pluginsIE11,
         onwarn,
       },
-      {
-        input: './lib/test/index.js',
-        output: {
-          file: './dist/unit-tests-umd.js',
-          format: 'umd',
-          name: 'ModelViewerElementUnitTests'
-        },
-        watch: {
-          include: watchFiles,
-        },
-        plugins: pluginsIE11,
-        onwarn,
-      },
   );
 
   plugins = [
     ...plugins,
-    terser({
-      sourcemap: {
-        includeSources: true,
-        filename: 'model-viewer.min.js.map',
-      }
-    }),
+    terser(),
   ];
 
   outputOptions.push(

@@ -1,6 +1,3 @@
-> ## 🛠 Status: In Development
-> `<model-viewer>` is currently in development. It's on the fast track to a 1.0 release, so we encourage you to use it and give us your feedback, but there are things that haven't been finalized yet and you can expect some changes.
-
 <p align="center">
   <img alt="A 3D model of an astronaut" src="screenshot.png" width="480">
 </p>
@@ -36,7 +33,6 @@ It can also be used directly from various free CDNs such as [unpkg.com](https://
 
 ```html
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-<script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
 ```
 
 For more detailed usage documentation and live examples, please visit our docs
@@ -71,19 +67,15 @@ below with the full version number (like `0.10.0`) to be pinned to.
 ## Browser Support
 
 `<model-viewer>` is supported on the last 2 major versions of all evergreen
-desktop and mobile browsers. `<model-viewer>` is also supported on IE11.
+desktop and mobile browsers.
 
-|               | <img src="https://github.com/alrra/browser-logos/raw/master/src/chrome/chrome_32x32.png" width="16"> Chrome | <img src="https://github.com/alrra/browser-logos/raw/master/src/firefox/firefox_32x32.png" width="16"> Firefox | <img src="https://github.com/alrra/browser-logos/raw/master/src/safari/safari_32x32.png" width="16"> Safari | <img src="https://github.com/alrra/browser-logos/raw/master/src/edge/edge_32x32.png" width="16"> Edge | <img src="https://github.com/alrra/browser-logos/raw/master/src/archive/internet-explorer_9-11/internet-explorer_9-11_32x32.png" width="16"> IE11 |
-| -------- | --- | --- | --- | --- | --- |
-| Desktop  | ✅  | ✅  | ✅  | ✅  | ✅  |
-| Mobile   | ✅  | ✅  | ✅  | ✅  | N/A |
+|               | <img src="https://github.com/alrra/browser-logos/raw/master/src/chrome/chrome_32x32.png" width="16"> Chrome | <img src="https://github.com/alrra/browser-logos/raw/master/src/firefox/firefox_32x32.png" width="16"> Firefox | <img src="https://github.com/alrra/browser-logos/raw/master/src/safari/safari_32x32.png" width="16"> Safari | <img src="https://github.com/alrra/browser-logos/raw/master/src/edge/edge_32x32.png" width="16"> Edge |
+| -------- | --- | --- | --- | --- |
+| Desktop  | ✅  | ✅  | ✅  | ✅  |
+| Mobile   | ✅  | ✅  | ✅  | ✅  |
 
 `<model-viewer>` builds upon standard web platform APIs so that the performance,
 capabilities and compatibility of the library get better as the web evolves.
-
-However, not all browsers support all of these features today. **Check out
-[POLYFILLS.md](https://github.com/google/model-viewer/blob/master/packages/model-viewer/POLYFILLS.md) to
-learn how to polyfill for maximum browser compatibility!**
 
 ## Development
 
@@ -97,6 +89,5 @@ Command                         | Description
 `npm run build:dev`             | Builds a subset of distributable files (faster than `npm run build`)
 `npm run test`                  | Run `<model-viewer>` unit tests
 `npm run clean`                 | Deletes all build artifacts
-`npm run create-legacy-bundles` | Generates IE11-compatible bundles (run `npm run build` first)
 `npm run dev`                   | Starts `tsc` and `rollup` in "watch" mode, causing artifacts to automatically rebuild upon incremental changes
 

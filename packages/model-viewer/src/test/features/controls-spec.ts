@@ -14,14 +14,14 @@
  */
 
 import {Camera, Vector3} from 'three';
+import {IS_IOS} from '../../constants.js';
 
-import {IS_IE11} from '../../constants.js';
 import {$controls, $promptAnimatedContainer, $promptElement, CameraChangeDetails, cameraOrbitIntrinsics, ControlsInterface, ControlsMixin, INTERACTION_PROMPT, SphericalPosition} from '../../features/controls.js';
 import ModelViewerElementBase, {$canvas, $scene, $userInputElement, Vector3D} from '../../model-viewer-base.js';
 import {StyleEvaluator} from '../../styles/evaluators.js';
 import {ChangeSource, SmoothControls} from '../../three-components/SmoothControls.js';
-import {Constructor, step} from '../../utilities.js';
-import {assetPath, dispatchSyntheticEvent, rafPasses, timePasses, until, waitForEvent} from '../helpers.js';
+import {Constructor, step, timePasses, waitForEvent} from '../../utilities.js';
+import {assetPath, dispatchSyntheticEvent, rafPasses, until} from '../helpers.js';
 import {BasicSpecTemplate} from '../templates.js';
 import {settleControls} from '../three-components/SmoothControls-spec.js';
 
@@ -112,13 +112,6 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
         element.src = assetPath('models/cube.gltf');
 
         await waitForEvent(element, 'load');
-        // NOTE(cdata): Sometimes the load event dispatches quickly enough to
-        // cause a race condition where property change occurs _after_ load.
-        // In this condition, it is possible for the controls to be "unsettled"
-        // by the time that the test begins. Awaiting for a microtask ensures
-        // that we always have time for one internal property change in the
-        // element:
-        await timePasses();
 
         settleControls(controls);
 
@@ -201,7 +194,8 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
 
         settleControls(controls);
 
-        expect(element.getCameraTarget()).to.be.eql(target);
+        expect(element.getCameraTarget().toString())
+            .to.be.equal(target.toString());
       });
 
       test('causes the camera to look at the target', () => {
@@ -226,8 +220,10 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
       });
 
       test('defaults FOV limits correctly', async () => {
-        expect(element.getMinimumFieldOfView()).to.be.closeTo(DEFAULT_MIN_FOV, 0.00001);
-        expect(element.getMaximumFieldOfView()).to.be.closeTo(DEFAULT_MAX_FOV, 0.00001);
+        expect(element.getMinimumFieldOfView())
+            .to.be.closeTo(DEFAULT_MIN_FOV, 0.00001);
+        expect(element.getMaximumFieldOfView())
+            .to.be.closeTo(DEFAULT_MAX_FOV, 0.00001);
       });
 
       test('can independently adjust FOV', async () => {
@@ -244,7 +240,11 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
       });
 
       test('changes FOV basis when aspect ratio changes', async () => {
+        if (IS_IOS) {  // Flaky on iOS 13
+          return;
+        }
         const fov = element.getFieldOfView();
+        expect(fov).to.be.closeTo(DEFAULT_MAX_FOV, .001);
         element.setAttribute('style', 'width: 200px; height: 300px');
 
         await until(() => element.getFieldOfView() !== fov);
@@ -456,7 +456,7 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
 
       test('sets max radius to at least the camera framed distance', () => {
         const cameraDistance = element[$scene].camera.position.distanceTo(
-            element[$scene].model.position);
+            element[$scene].target.position);
         expect(controls.options.maximumRadius).to.be.at.least(cameraDistance);
       });
 
@@ -468,7 +468,7 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
             await timePasses();
 
             const cameraDistance = element[$scene].camera.position.distanceTo(
-                element[$scene].model.position);
+                element[$scene].target.position);
             expect(controls.camera.far)
                 .to.be.at.least(cameraDistance + maxRadius);
           });
@@ -480,7 +480,7 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
             await timePasses();
 
             const cameraDistance = element[$scene].camera.position.distanceTo(
-                element[$scene].model.position);
+                element[$scene].target.position);
             expect(controls.camera.far)
                 .to.be.at.least(cameraDistance + maxRadius);
           });
@@ -606,8 +606,7 @@ suite('ModelViewerElementBase with ControlsMixin', () => {
                 .to.be.equal(true);
           });
 
-          // TODO(#1141)
-          (IS_IE11 ? test.skip : test)(
+          test(
               'does not prompt users to interact before a model is loaded',
               async () => {
                 element.src = null;
