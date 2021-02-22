@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import {AnimationAction, AnimationClip, AnimationMixer, Box3, Camera, Event as ThreeEvent, Matrix3, Object3D, PerspectiveCamera, Raycaster, Scene, Vector2, Vector3} from 'three';
+import {AnimationAction, AnimationClip, AnimationMixer, Box3, Camera, Event as ThreeEvent, LoopOnce, Matrix3, Object3D, PerspectiveCamera, Raycaster, Scene, Vector2, Vector3} from 'three';
 
 import {USE_OFFSCREEN_CANVAS} from '../constants.js';
 import ModelViewerElementBase, {$renderer} from '../model-viewer-base.js';
@@ -128,6 +128,13 @@ export class ModelScene extends Scene {
 
     this.target.add(this.modelContainer);
     this.mixer = new AnimationMixer(this.modelContainer);
+  }
+
+  /**
+   * Needed for finished event
+   */
+  get animationMixer() {
+    return this.mixer;
   }
 
   /**
@@ -455,7 +462,9 @@ export class ModelScene extends Scene {
    * provided, or if no animation is found by the given name, always falls back
    * to playing the first animation.
    */
-  playAnimation(name: string|null = null, crossfadeTime: number = 0) {
+  playAnimation(
+      name: string|null = null, crossfadeTime: number = 0,
+      loop: Boolean = true) {
     if (this._currentGLTF == null) {
       return;
     }
@@ -476,12 +485,22 @@ export class ModelScene extends Scene {
       animationClip = animations[0];
     }
 
+    if (this.currentAnimationAction?.paused) {
+      // non faccio crossfade se sono in pausa, posso stoppare l'animazione
+      this.stopAnimation();
+    }
+
     try {
       const {currentAnimationAction: lastAnimationAction} = this;
 
       this.currentAnimationAction =
           this.mixer.clipAction(animationClip, this).play();
       this.currentAnimationAction.enabled = true;
+
+      if (!loop) {
+        this.currentAnimationAction.setLoop(LoopOnce, 0);
+        this.currentAnimationAction.clampWhenFinished = true;
+      }
 
       if (lastAnimationAction != null &&
           this.currentAnimationAction !== lastAnimationAction) {
