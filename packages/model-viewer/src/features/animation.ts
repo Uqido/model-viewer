@@ -110,7 +110,7 @@ export const AnimationMixin = <T extends Constructor<ModelViewerElementBase>>(
         this.play();
       }
 
-      this[$scene].model.animationMixer.addEventListener(
+      this[$scene].animationMixer.addEventListener(
           'finished', () => {this.pause()})
     }
 
